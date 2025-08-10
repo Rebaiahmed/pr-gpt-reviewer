@@ -22,12 +22,10 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          node -e "
-            const { ReviewService } = await import('./dist/review/review.service.js');
-            const service = new ReviewService();
-            const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-            const review = await service.reviewPR(owner, repo, process.env.PR_NUMBER, process.env.GITHUB_TOKEN);
-            console.log(review);
+          npm install ts-node
+          owner="${REPO%%/*}"
+          repo="${REPO##*/}"
+          npx ts-node scripts/review-pr.ts "$owner" "$repo" "$PR_NUMBER" "$GITHUB_TOKEN"

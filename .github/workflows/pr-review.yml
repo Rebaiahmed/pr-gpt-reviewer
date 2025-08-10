@@ -26,7 +26,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           node -e "
-          import('./dist/review/review.service.js').then(async ({ ReviewService }) => {
+          import('./dist/review/review/review.service.js').then(async ({ ReviewService }) => {
             const service = new ReviewService();
             const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
             const review = await service.reviewPR(owner, repo, process.env.PR_NUMBER, process.env.GITHUB_TOKEN);

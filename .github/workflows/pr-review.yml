@@ -2,30 +2,32 @@ name: PR Review Bot
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
 
 jobs:
   review:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+    # ⬇️ permissions go here (job-level)
+    permissions:
+      contents: read
+      pull-requests: write   # needed for /pulls/:number/reviews
+      issues: write          # only needed if you post issue comments
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Install dependencies
-        run: npm install
-
+      - run: npm ci
       - name: Run PR Review
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # or your PAT secret if using one
         run: |
-          npm install ts-node
+          npm i -D ts-node
           owner="${REPO%%/*}"
           repo="${REPO##*/}"
           npx ts-node scripts/review-pr.ts "$owner" "$repo" "$PR_NUMBER" "$GITHUB_TOKEN"

@@ -1,22 +1,21 @@
 /* eslint-disable prettier/prettier */
 // scripts/review-pr.ts
 import 'dotenv/config';
-import { ReviewService } from '../src/review/review/review.service';
+import { ReviewService } from '../src/review/review/review.service'; // keep your current path
 
-// tiny helper to post a PR comment
-async function postPRComment(owner: string, repo: string, pr: number, token: string, body: string) {
-  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${pr}/comments`, {
+async function postPRReview(owner: string, repo: string, pr: number, token: string, body: string, event: 'COMMENT'|'APPROVE'|'REQUEST_CHANGES'='COMMENT') {
+  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pr}/reviews`, {
     method: 'POST',
     headers: {
       Authorization: `token ${token}`,
       Accept: 'application/vnd.github.v3+json',
       'User-Agent': 'pr-gpt-reviewer'
     },
-    body: JSON.stringify({ body })
+    body: JSON.stringify({ body, event })
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Failed to post PR comment: ${res.status} ${res.statusText} :: ${text}`);
+    throw new Error(`Failed to post PR review: ${res.status} ${res.statusText} :: ${text}`);
   }
 }
 
@@ -28,20 +27,18 @@ async function postPRComment(owner: string, repo: string, pr: number, token: str
     process.exit(1);
   }
 
-  // minimal ConfigService shim
   const svc = new ReviewService({ get: (k: string) => process.env[k] } as any);
-
   const review = await svc.reviewPR(owner, repo, pr, token);
-  console.log('--- Review ---\n' + review);
 
-  // skip posting if explicitly disabled
+  const body = `### 🤖 PR Review (pr-gpt-reviewer)\n\n${review}\n`;
+  console.log('--- Review ---\n' + body);
+
   if (process.env.NO_COMMENT === 'true') process.exit(0);
 
-  // Add a small header so it's recognizable in the PR UI
-  const body = `### 🤖 PR Review (pr-gpt-reviewer)\n\n${review}`;
-  await postPRComment(owner, repo, pr, token, body);
-  console.log('Comment posted to PR #' + pr);
+  await postPRReview(owner, repo, pr, token, body, process.env.REVIEW_EVENT as any || 'COMMENT');
+  console.log('Review posted to PR #' + pr);
 })().catch((err) => {
   console.error(err);
+  console.error('\nTip: For forked PRs, use `pull_request_target` and add job permissions, or a PAT with proper scopes.');
   process.exit(1);
 });
